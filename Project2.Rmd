@@ -1,0 +1,1478 @@
+---
+title: "project 2 - STAT 154"
+author: "Natasha Ashley Wijaya"
+date: "4/25/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE, fig.path = 'images/')
+```
+
+```{r}
+image1 <- read.table('image1.txt')
+image2 <- read.table('image2.txt')
+image3 <- read.table('image3.txt')
+colnames(image1) <- c("x","y","expert_label","NDAI","SD","CORR","DF","CF","BF","AF","AN")
+colnames(image2) <- c("x","y","expert_label","NDAI","SD","CORR","DF","CF","BF","AF","AN")
+colnames(image3) <- c("x","y","expert_label","NDAI","SD","CORR","DF","CF","BF","AF","AN")
+```
+
+
+
+### 1(b)
+```{r}
+library(ggplot2)
+#summary(all_image)
+
+# % of pixels for class 1 (cloudy)
+pixels_perc <- matrix(
+  c(nrow(image1 %>% filter(expert_label == 1))/ nrow(image1),
+  nrow(image2 %>% filter(expert_label == 1))/ nrow(image2),
+  nrow(image3 %>% filter(expert_label == 1))/ nrow(image3), 
+  nrow(all_image %>% filter(expert_label == 1))/ nrow(all_image),
+  # % of pixels for class 0 (unlabeled)
+  nrow(image1 %>% filter(expert_label == 0))/ nrow(image1),
+  nrow(image2 %>% filter(expert_label == 0))/ nrow(image2),
+  nrow(image3 %>% filter(expert_label == 0))/ nrow(image3),
+  nrow(all_image %>% filter(expert_label == 0))/ nrow(all_image),
+  # % of pixels for class -1 (not cloudy/ clear)
+  nrow(image1 %>% filter(expert_label == -1))/ nrow(image1),
+  nrow(image2 %>% filter(expert_label == -1))/ nrow(image2),
+  nrow(image3 %>% filter(expert_label == -1))/ nrow(image3),
+  nrow(all_image %>% filter(expert_label == -1))/ nrow(all_image)),
+  ncol = 3, byrow = FALSE)
+
+rownames(pixels_perc) <- c("Image 1", "Image 2", "Image 3", "All Image")
+colnames(pixels_perc) <- c("class 1: cloud", "class 0: unlabeled", "class -1: not cloud")
+pixels_perc <- as.table(pixels_perc)
+pixels_perc
+
+summary(image1)
+summary(image2)
+summary(image3)
+
+#library(gridExtra)
+p1 <- ggplot(data = image1, aes(x, y, col = expert_label)) + geom_point() + labs(col = "Expert Label", title = "Expert labels for blocks 20-22 of MISR orbits 13257 (image 1)") + xlab("x - coordinate") + ylab("y - coordinate")
+p2 <- ggplot(data = image2, aes(x, y, col = expert_label)) + geom_point() + labs(col = "Expert Label", title = "Expert labels for blocks 20-22 of MISR orbits 13490 (image 2)") + xlab("x - coordinate") + ylab("y - coordinate")
+p3 <- ggplot(data = image3, aes(x, y, col = expert_label)) + geom_point() + labs(col = "Expert Label", title = "Expert labels for blocks 20-22 of MISR orbits 13723 (image 3)") + xlab("x - coordinate") + ylab("y - coordinate")
+p4 <- ggplot(data = all_image, aes(x, y, col = expert_label)) + geom_point() + labs(col = "Expert Label", title = "Expert labels for blocks 20-22 of MISR orbits 13257, 13490, 13723 (all images)") + xlab("x - coordinate") + ylab("y - coordinate")
+#grid.arrange(p1, p2, p3, p4, ncol = 2)
+p1
+p2
+p3
+p4
+```
+
+
+*Do you observe some trend/pattern? Is an i.i.d assumption for the samples justified for this dataset?*
+*On image 1*
+when expert label equals to -1, the pixels seems to locate on higher y coordinate as most of the pixels located on y > 200.
+whereas when label equals to 1, the pixels seems to locate on lower y coordinate as most of pixels located on y < 200
+both cloud and no cloud are distributed evenly based on x coordinate
+*On image 2*
+more pixels with expert label equals to -1 seems to concentrate on the higher x coordinate
+*On image 3/ All image*
+some trend or pattern: when the expert label equals to -1 -> seems to have higher x coordinate, on the lower x coordinate with high y seems are where expert_label = 1
+and no, iid assumption is not justtifies as data seems to be still independent towards one another(?)
+
+*On i.i.d assumptions*
+From all the plotted maps above, we can observe that there exists some concentration based on the expert_labels. This shows that the data is not identically distributed. If we observe closer, we shall also notice that data with cloud label are never located side by side with data with no-cloud label, there is always unlabeled data in between. This shows us that the data is not independent
+
+*1c.Perform a visual and quantitative EDA of the dataset, e.g., summarizing (i) pair- wise relationship between the features themselves and (ii) the relationship between the expert labels with the individual features. Do you notice differences between the 2 two classes (cloud, no cloud) based on the radiance or other features (CORR, NDAI, SD)?*
+```{r}
+library(GGally)
+library(corrplot)
+#pairs(image, gap = 0, pch = ".")
+ggpairs(image)
+
+# ii.) relationship between the expert labels with the individual features
+cor(image$expert_label, image[-3])
+cat("Variables with strong correlation with expert label are the following: NDAI (0.62), CORR (0.444), AF (-.3897), AN (-.3896)")
+
+cor(image$expert_label, image[-3])
+cat("Variables with strong correlation with expert label (excluding 0): NDAI (0.76), x (-.57), CORR (.55), AF (-.51), AN (-.5), BF (-.48), SD (.44)")
+
+cloud_image <- image %>% filter(expert_label == 1)
+clear_image <- image %>% filter(expert_label == -1)
+summary(cloud_image)
+summary(clear_image)
+```
+Based on coordinate x and y, the cloud class have median of x = 151, mean of x = 161.2, median of y = 146, mean of y = 154.2, whereas the no-cloud class have median of x = 291, mean of x = 266.1, median of y = 229, mean of y = 217.2. These numbers tell us that the places with no-cloud are generally located on higher coordinates compared to cloudy ones.
+NDAI(average radiation measurement) on the cloud class has mean = 1.9496, median = 1.9613, while NDAI on no cloud has mean = -.2627, median = -.6555. NDAI on the cloud class usually positive, while on the no cloud ones has negative median and mean.
+Based on SD, median and mean on cloud class is very high at 7.3 and 9.8 respectively while median and mean for no cloud data is 1.4 and 2.98 respectively.
+Based on CORR, median and mean on cloud are .25 and .26, while on no cloud they are .14 -> not much difference on correlation?
+Based on Radiance, no cloud class has higher radiance for all 5 radiances compared to cloud class.
+
+```{r}
+#boxplots on image
+library(reshape2)
+image.m = melt(image, id.var="expert_label")
+
+ggplot(data = image.m, aes(x = expert_label, y = value, group = expert_label)) + 
+  geom_boxplot() + facet_wrap(~variable,ncol = 3) + labs(subtitle = "Boxplot of each variable differentiated by two classes")
+
+# CORR and x
+ggplot() + geom_point(data = cloud_image, aes(x = x, y = CORR, color = expert_label)) + geom_point(data = clear_image, aes(x, CORR, color = expert_label))
+
+# x and NDAI
+ggplot() + geom_point(data = cloud_image, aes(x, NDAI, color = expert_label)) + geom_point(data = clear_image, aes(x, y, color = expert_label))
+```
+
+*quantitative and qualitative EDA: Confidence Interval*
+
+```{r}
+set.seed(123)
+#CI for NDAI
+cat("95% CI for NDAI of cloud data: ", c(mean(sample(cloud_image, 10)$NDAI) - 1.96*sd(sample(cloud_image, 10)$NDAI), ",",
+  mean(sample(cloud_image, 10)$NDAI) + 1.96*sd(sample(cloud_image, 10)$NDAI)))
+
+cat("95% CI for NDAI of no cloud data: ", c(mean(sample(clear_image, 10)$NDAI) - 1.96*sd(sample(clear_image, 10)$NDAI), ",",
+  mean(sample(clear_image, 10)$NDAI) + 1.96*sd(sample(clear_image)$NDAI)))
+
+hist(cloud_image$NDAI, breaks = 100, ylim = c(0,5000), col = scales::alpha(4,.5), main = "Distribution of NDAI", xlab = "NDAI")
+#legend(70, 15000, legend = c("NDAI of cloud", "NDAI of clear"), col = c(4, 5))
+hist(clear_image$NDAI, breaks = 100, ylim = c(0,5000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$NDAI))
+
+#CI for SD
+cat("95% CI for SD of cloud data: ", c(mean(sample(cloud_image, 10)$SD) - 1.96*sd(sample(cloud_image, 10)$SD), ",",
+  mean(sample(cloud_image, 10)$SD) + 1.96*sd(sample(cloud_image, 10)$SD)))
+
+cat("95% CI for SD of no cloud data: ", c(mean(sample(clear_image, 10)$SD) - 1.96*sd(sample(clear_image, 10)$SD), ",",
+  mean(sample(clear_image, 10)$SD) + 1.96*sd(sample(clear_image)$SD)))
+
+hist(cloud_image$SD, breaks = 100, ylim = c(0,40000), col = scales::alpha(4,.5), main = "Distribution of SD", xlab = "SD")
+#legend(70, 15000, legend = c("SD of cloud", "SD of clear"), col = c(4, 5))
+hist(clear_image$SD, breaks = 100, ylim = c(0,40000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$SD))
+
+#CI for CORR
+cat("95% CI for CORR of cloud data: ", c(mean(sample(cloud_image, 10)$CORR) - 1.96*sd(sample(cloud_image, 10)$CORR), ",",
+  mean(sample(cloud_image, 10)$CORR) + 1.96*sd(sample(cloud_image, 10)$CORR)))
+
+cat("95% CI for CORR of no cloud data: ", c(mean(sample(clear_image, 10)$CORR) - 1.96*sd(sample(clear_image, 10)$CORR), ",",
+  mean(sample(clear_image, 10)$CORR) + 1.96*sd(sample(clear_image)$CORR)))
+
+hist(cloud_image$CORR, breaks = 100, xlim = c(-0.4,1), ylim = c(0,18000), col = scales::alpha(4,.5), main = "Distribution of CORR", xlab = "CORR")
+#legend(.7, 15000, legend = c("CORR of cloud", "CORR of clear"), col = c(4, 5))
+hist(clear_image$CORR, breaks = 100, xlim = c(-0.4,1), ylim = c(0,18000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$CORR))
+
+#CI for DF
+cat("95% CI for DF of cloud data: ", c(mean(sample(cloud_image, 10)$DF) - 1.96*sd(sample(cloud_image, 10)$DF), ",",
+  mean(sample(cloud_image, 10)$DF) + 1.96*sd(sample(cloud_image, 10)$DF)))
+
+cat("95% CI for DF of no cloud data: ", c(mean(sample(clear_image, 10)$DF) - 1.96*sd(sample(clear_image, 10)$DF), ",",
+  mean(sample(clear_image, 10)$DF) + 1.96*sd(sample(clear_image)$DF)))
+
+hist(cloud_image$DF, breaks = 100, ylim = c(0,18000), col = scales::alpha(4,.5), main = "Distribution of DF", xlab = "DF")
+#legend(50, 15000, legend = c("DF of cloud", "DF of clear"), col = c(4, 5))
+hist(clear_image$DF, breaks = 100, ylim = c(0,18000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$DF))
+
+#CI for CF
+cat("95% CI for CF of cloud data: ", c(mean(sample(cloud_image, 10)$CF) - 1.96*sd(sample(cloud_image, 10)$CF), ",",
+  mean(sample(cloud_image, 10)$CF) + 1.96*sd(sample(cloud_image, 10)$CF)))
+
+cat("95% CI for CF of no cloud data: ", c(mean(sample(clear_image, 10)$CF) - 1.96*sd(sample(clear_image, 10)$CF), ",",
+  mean(sample(clear_image, 10)$CF) + 1.96*sd(sample(clear_image)$CF)))
+
+hist(cloud_image$CF, breaks = 100, ylim = c(0,18000), col = scales::alpha(4,.5), main = "Distribution of CF", xlab = "CF")
+#legend(50, 15000, legend = c("CF of cloud", "CF of clear"), col = c(4, 5))
+hist(clear_image$CF, breaks = 100, ylim = c(0,18000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$CF))
+
+#CI for BF
+cat("95% CI for BF of cloud data: ", c(mean(sample(cloud_image, 10)$BF) - 1.96*sd(sample(cloud_image, 10)$BF), ",",
+  mean(sample(cloud_image, 10)$BF) + 1.96*sd(sample(cloud_image, 10)$BF)))
+
+cat("95% CI for BF of no cloud data: ", c(mean(sample(clear_image, 10)$BF) - 1.96*sd(sample(clear_image, 10)$BF), ",",
+  mean(sample(clear_image, 10)$BF) + 1.96*sd(sample(clear_image)$BF)))
+
+hist(cloud_image$BF, breaks = 100, ylim = c(0,10000), col = scales::alpha(4,.5), main = "Distribution of BF", xlab = "BF")
+#legend(50, 10000, legend = c("BF of cloud", "BF of clear"), col = c(4, 5))
+hist(clear_image$BF, breaks = 100, ylim = c(0,10000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$BF))
+
+#CI for AF
+cat("95% CI for AF of cloud data: ", c(mean(sample(cloud_image, 10)$AF) - 1.96*sd(sample(cloud_image, 10)$AF), ",",
+  mean(sample(cloud_image, 10)$AF) + 1.96*sd(sample(cloud_image, 10)$AF)))
+
+cat("95% CI for AF of no cloud data: ", c(mean(sample(clear_image, 10)$AF) - 1.96*sd(sample(clear_image, 10)$AF), ",",
+  mean(sample(clear_image, 10)$AF) + 1.96*sd(sample(clear_image)$AF)))
+
+hist(cloud_image$AF, breaks = 100, ylim = c(0,14000), col = scales::alpha(4,.5), main = "Distribution of AF", xlab = "AF")
+#legend(50, 12000, legend = c("AF of cloud", "AF of clear"), col = c(4, 5))
+hist(clear_image$AF, breaks = 100, ylim = c(0,14000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$AF))
+
+#CI for AN
+cat("95% CI for AN of cloud data: ", c(mean(sample(cloud_image, 10)$AN) - 1.96*sd(sample(cloud_image, 10)$AN), ",",
+  mean(sample(cloud_image, 10)$AN) + 1.96*sd(sample(cloud_image, 10)$AN)))
+
+cat("95% CI for AN of no cloud data: ", c(mean(sample(clear_image, 10)$AN) - 1.96*sd(sample(clear_image, 10)$AN), ",",
+  mean(sample(clear_image, 10)$AN) + 1.96*sd(sample(clear_image)$AN)))
+
+hist(cloud_image$AN, breaks = 100, ylim = c(0,10000), col = scales::alpha(4,.5), main = "Distribution of AN", xlab = "AN")
+#legend(50, 10000, legend = c("AN of cloud", "AN of clear"), col = c(scales::alpha(4,.5), scales::alpha(5,.5)))
+hist(clear_image$AN, breaks = 100, ylim = c(0,10000), col = scales::alpha(5,.5), add = TRUE)
+lines(density(cloud_clear$AN))
+```
+
+*Quantitative EDA: PCA*
+```{r}
+pca_prcomp <- prcomp(train_image[,c(3, 13, 14)])
+pca_prcomp
+
+biplot(pca_prcomp, scale=TRUE, expand = 10)
+
+library(psych)
+pairs.panels(image[,c(4, 5, 6, 10)], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+#bivariate scatter plots below the diagonal, histograms on the diagonal, and the Pearson correlation above the diagonal
+
+#plotting var against var
+library(gridExtra)
+p5 <- ggplot(data = image, aes(AF, DF, col = expert_label)) + geom_point() + labs(col = "Expert Label") + 
+  xlab("AF") + ylab("DF") + geom_abline(colour='#E41A1C')
+p6 <- ggplot(data = image, aes(AF, CF, col = expert_label)) + geom_point() + labs(col = "Expert Label") + 
+  xlab("AF") + ylab("CF") + geom_abline(colour='#E41A1C')
+p7 <- ggplot(data = image, aes(AF, BF, col = expert_label)) + geom_point() + labs(col = "Expert Label") + 
+  xlab("AF") + ylab("BF") + geom_abline(colour='#E41A1C')
+p8 <- ggplot(data = image, aes(AF, AN, col = expert_label)) + geom_point() + labs(col = "Expert Label") + 
+  xlab("AF") + ylab("AN") + geom_abline(colour='#E41A1C')
+grid.arrange(p5, p6, p7, p8, ncol = 2)
+
+```
+
+
+###2. 
+####2a) Splitting data
+First splitting way:
+```{r}
+library(dplyr)
+image <- rbind(image1, image2, image3)
+image <- image %>% filter(expert_label == 1 | expert_label == -1)
+
+blocking <- function(image,n) {
+  min_x <- min(image$x)
+  min_y <- min(image$y)
+  max_x <- max(image$x)
+  max_y <- max(image$y)
+  
+  min_x_i <- matrix(rep(seq(min_x, max_x, length.out = n+1),n), nrow = n, byrow = TRUE)
+  min_y_i <- matrix(rep(seq(min_y, max_y, length.out = n+1),n), ncol = n, byrow = FALSE)
+  block <- list()
+  for (i in 1:n) {
+    for (j in 1:n){
+      index <- j-1 + n*(i-1) + 1
+      block[[index]] <- image[ which(image$x >= min_x_i[i,j] & image$x < min_x_i[i,j+1] & image$y >= min_y_i[i,j] & image$y < min_y_i[i+1, j]),]
+    }
+    ##adding data in with max of x values
+    block[[index]] <- image[ which(image$x >= min_x_i[i,j] & image$x <= min_x_i[i,j+1] & image$y >= min_y_i[i,j] & image$y < min_y_i[i+1, j]),]
+  }
+  ##############################
+  ##adding the data in the max of y values
+  i=n
+  for (j in 1:n) {
+    index <- j-1 + n*(i-1) + 1
+    block[[index]] <- image[ which(image$x >= min_x_i[i,j] & image$x < min_x_i[i,j+1] & image$y >= min_y_i[i,j] & image$y <= min_y_i[i+1, j]),]
+  } 
+  block[[index]] <- image[ which(image$x >= min_x_i[i,j] & image$x <= min_x_i[i,j+1] & image$y >= min_y_i[i,j] & image$y <= min_y_i[i+1, j]),]
+  ##############################
+  return(block)
+}
+
+# test <- block[[2]]
+  # c(min(test$x),max(test$x))
+  # c(min(test$y),max(test$y))
+split_way1 <- function(image, n) {
+  block <- blocking(image, n)
+  
+  #randomly pick 12 blocks = 75% training data
+  num_blocks_train <- floor(n*n*0.75)
+  train_blocks <- sample(1:(n^2), num_blocks_train)
+  
+  train_image <- data.frame()
+  for (i in train_blocks){
+    one_block <- block[[i]]
+    train_image <- rbind(train_image, one_block)
+  }
+  
+  indices <- seq(1:(n^2))
+  rest_blocks <- indices[-train_blocks] 
+  num_blocks_val <- floor(n*n*0.125)
+  val_blocks <- sample(rest_blocks, num_blocks_val)
+  val_image <- data.frame()
+  for (i in val_blocks){
+    one_block <- block[[i]]
+    val_image <- rbind(val_image, one_block)
+  }
+  
+  test_blocks <- rest_blocks[which(rest_blocks != val_blocks[1] & rest_blocks != val_blocks[2])]
+  test_image <- data.frame()
+  for (i in test_blocks){
+    one_block <- block[[i]]
+    test_image <- rbind(test_image, one_block)
+  }
+  result <- list(train_image, val_image, test_image)
+  return(result)
+}
+set.seed(123)
+image_split <- split_way1(image, n = 4)
+
+train_image <- image_split[[1]]
+val_image <- image_split[[2]]
+test_image <- image_split[[3]]
+##checking the dimension
+dim(train_image)
+dim(val_image)
+dim(test_image)
+
+nrow(train_image) + nrow(val_image) + nrow(test_image)
+dim(image)[1]
+```
+
+Second splitting way: smoothing
+```{r}
+library(zoo)
+library(plyr)
+smoothing <- function(image, n = 9) {
+  sorted_image <- image[order(image$x, image$y),]
+  r <- rollmeanr(sorted_image, n)
+  r <- as.data.frame(r)
+ 
+  index <- seq(1, nrow(r), n)
+  averaged_image <- as.data.frame(r[index,])
+  ## replacing the expert label by the majority label of the 9 data points
+  library(plyr)
+  lab <- c()
+  seq <- seq(1,nrow(image), n)
+  for (i in 1:length(seq)) {
+  df <- table(sorted_image$expert_label[seq[i]:(seq[i]+n-1)])
+  #df <- count(sorted_image$expert_label[1+(9*(i-1)):9+(9*(i-1))])
+  lab[i] <- names(which.max(df))
+  if((max(df)) < 7 ){
+    lab[i] <- NA
+  }
+  }
+  lab <- lab[1:length(index)]
+  averaged_image$expert_label <- lab
+#  is.na(averaged_image$expert_label)
+  averaged_image <- na.omit(averaged_image)
+  return(averaged_image) 
+}
+
+split_way2 <- function(image,n =9) {
+  averaged_image <- smoothing(image,n)
+  
+  num_train <- floor(nrow(averaged_image)*0.75)
+  train_indices <- sample(1:nrow(averaged_image), num_train)
+  train_data_2 <- averaged_image[train_indices, ]
+  
+  indices <- seq(1:nrow(averaged_image))
+  rest_indices <- indices[-train_indices] 
+  num_val <- floor(nrow(averaged_image)*0.125)
+  val_indices <- sample(rest_indices, num_val)
+  val_data_2 <- averaged_image[val_indices, ]
+  
+  test_indices <- indices[-train_indices]
+  test_indices <- test_indices[-val_indices]
+  test_data_2 <- averaged_image[test_indices, ]
+  
+  result <- list(train_data_2, val_data_2, test_data_2)
+  return(result)
+}
+
+image_split_2 <- split_way2(image, n=9)
+   
+train_data_2 <- image_split[[1]]
+val_data_2 <- image_split[[2]]
+test_data_2 <- image_split[[3]]
+```
+
+####b) trivial classifier -> set all to -1
+```{r}
+accuracy <- nrow(val_image %>% filter(expert_label == -1))/ nrow(val_image)*100
+accuracy ## 64% <- not good <- indicates that we cannot use trivial classifier
+
+accuracy <- nrow(test_image %>% filter(expert_label == -1))/ nrow(test_image)*100
+accuracy ## 44% <- not good <- indicates that we cannot use trivial classifier
+```
+
+*2c. Assuming expert labels as the truth, suggests three of the best features, using quantitative and visual justification. Only relevant plots are necessary,* use scatter plot as well
+x -> CI for cloud and no cloud beda jauh, so this one is very important feature, 
+```{r}
+ggplot() + geom_point(data = image, aes(x, NDAI, color = expert_label), size = 0.5)
+
+ggplot() + geom_point(data = image, aes(x, CORR, color = expert_label), size = 0.5) + geom_smooth(color = "red", size = 3, method = "lm")
+
+ggplot() + geom_point(data = image, aes(x, AF, color = expert_label), size = 0.5)
+
+ggplot() + geom_point(data = image, aes(x, SD, color = expert_label), size = 0.5) 
+
+model_lm <- lm(expert_label~., data = train_image)
+summary(model_lm)
+
+```
+note: later on, play with geom_freqpoly
+ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) + 
+  geom_freqpoly(mapping = aes(colour = cut), binwidth = 500)
+
+highest std error: CORR, intercept, NDAI, AN, AF -> Std. Error is the standard deviation of the sampling distribution of the estimate of the coefficient under the standard regression assumptions. Such standard deviations are called standard errors of the corresponding quantity (the coefficient estimate in this case). ???
+
+
+largest estimate/ beta: CORR, intercept, NDAI, AN, AF, BF -> higher beta = more contribution in predicting models
+
+smallest p-value < 0.05 = AN, CORR, AF, NDAI, Intercept -> if smaller than 0.5, we reject hypothesis, meaning that we favor the idea that there is a relationship between the variable and predicted
+
+based on the correlation between the features and expert label, also when we run a linear regression of expert label against other variables
+
+Pr. is the p-value for the hypothesis test for which the t value is the test statistic. It tells you the probability of a test statistic at least as unusual as the one you obtained, if the null hypothesis were true. In this case, the null hypothesis is that the true coefficient is zero; if that probability is low, it's suggesting that it would be rare to get a result as unusual as this if the coefficient were really zero.
+
+####d)
+```{r}
+library(ggplot2)
+library(caret)
+source('CVgeneric.R')
+```
+###3. Modeling
+#### a) 
+####LDA
+```{r}
+CV_train <- rbind(train_image, val_image)
+training_features <- CV_train[,-3]
+#selected training features based on number 2(c)
+sub_training_features <- training_features[c("CORR", "NDAI", "SD", "AF", "x","y")]
+training_labels <- CV_train[,3]
+```
+
+```{r}
+library(MASS)
+library(car)
+set.seed(1)
+train_lda <- lda(expert_label ~ CORR + NDAI + SD + AF, data = train_image)
+
+test_lda_pred <- predict(train_lda, test_image)$class
+table(test_image$expert_label, test_lda_pred, dnn = c('Actual Group','Predicted Group'))
+lda_accuracy_test <- accuracy_test(test_image$expert_label, test_lda_pred)
+lda_accuracy_test
+
+lda_CVgeneric <- CVgeneric("lda", sub_training_features, training_labels , 10, accuracy_test)
+lda_CVmean <- mean(lda_CVgeneric)
+lda_CVmean
+
+#####------------------------------ Splitting Way 2
+train_lda_2 <- lda(expert_label ~ CORR + NDAI + SD + AF, data = train_data_2)
+test_lda_pred_2 <- predict(train_lda_2, test_image)$class
+table(test_image$expert_label, test_lda_pred_2, dnn = c('Actual Group','Predicted Group'))
+#lda_accuracy_test <- sum(test_image$expert_label == test_lda_pred)/nrow(test_image)
+lda_accuracy_test_2 <- accuracy_test(test_image$expert_label, test_lda_pred_2)
+lda_accuracy_test_2
+
+lda_CVgeneric_2 <- CVgeneric("lda", sub_training_features, training_labels , 10, accuracy_test, CVgeneric_way2)
+lda_CVmean_2 <- mean(lda_CVgeneric_2)
+lda_CVmean_2
+```
+## ALL variables
+```{r}
+train_lda_full <- lda(expert_label ~ CORR + NDAI + SD + AF + AN + BF + CF + DF, data = train_image)
+test_lda_pred_full <- predict(train_lda_full, test_image)$class
+table(test_image$expert_label, test_lda_pred_full, dnn = c('Actual Group','Predicted Group'))
+lda_accuracy_test_full <- accuracy_test(test_image$expert_label, test_lda_pred_full)
+lda_accuracy_test_full
+
+lda_CVgeneric_full <- CVgeneric("lda", training_features, training_labels , 10, accuracy_test)
+lda_CVmean_full <- mean(lda_CVgeneric)
+```
+
+#### QDA
+```{r}
+train_qda <- qda(expert_label ~ CORR + SD + NDAI + AF, data = train_image)
+#plot(train_qda)     
+
+test_qda_pred <- predict(train_qda, test_image)$class
+table(test_image$expert_label, test_qda_pred, dnn = c('Actual Group','Predicted Group'))
+qda_accuracy_test <- accuracy_test(test_image$expert_label, test_qda_pred)
+qda_accuracy_test
+
+qda_CVgeneric <- CVgeneric("qda", sub_training_features, training_labels , 10, accuracy_test)
+qda_CVmean <- mean(qda_CVgeneric)
+########## --------------------------------------- WAY 2
+train_qda_2 <- qda(expert_label ~ CORR + SD + NDAI + AF, data = train_data_2)
+#plot(train_qda)     
+
+test_qda_pred_2 <- predict(train_qda_2, test_image)$class
+table(test_image$expert_label, test_qda_pred_2, dnn = c('Actual Group','Predicted Group'))
+qda_accuracy_test_2 <- accuracy_test(test_image$expert_label, test_qda_pred_2)
+qda_accuracy_test_2
+
+qda_CVgeneric_2 <- CVgeneric("qda", sub_training_features, training_labels , 10, accuracy_test, CVgeneric_way2)
+qda_CVmean_2 <- mean(qda_CVgeneric_2)
+```
+## ALL variables 
+```{r}
+train_qda_full <- qda(expert_label ~ CORR + NDAI + SD + AF + AN + BF + CF + DF, data = train_image)
+test_qda_pred_full <- predict(train_qda_full, test_image)$class
+table(test_image$expert_label, test_qda_pred_full, dnn = c('Actual Group','Predicted Group'))
+qda_accuracy_test_full <- accuracy_test(test_image$expert_label, test_qda_pred_full)
+qda_accuracy_test_full
+
+qda_CVgeneric_full <- CVgeneric("lda", training_features, training_labels , 10, accuracy_test)
+qda_CVmean_full <- mean(lda_CVgeneric)
+```
+
+#### logistic regressionn
+```{r}
+library(knitr)
+library(ISLR)
+library(gridExtra)
+#qplot(x=train_image$CORR, y=train_image$NDAI, color=train_image$expert_label, shape=train_image$expert_label, geom='point')+scale_shape(solid=FALSE)
+train_image$expert_label <- as.factor(train_image$expert_label)
+logit <- glm(expert_label ~ NDAI+SD+CORR+AF, data=train_image, family='binomial')
+#summary(logit)
+test_logit_prob <- predict(logit, newdata=test_image, type='response')
+pred_logit <- rep(-1,length(test_logit_prob))
+pred_logit[test_logit_prob>=0.5] <- 1
+table(test_image$expert_label, pred_logit, dnn = c('Actual Group','Predicted Group'))
+logit_accuracy_test <- accuracy_test(test_image$expert_label, pred_logit)
+logit_accuracy_test
+
+logit_CVgeneric <- CVgeneric("logistic regression", sub_training_features, training_labels , 10, accuracy_test)
+logit_CVmean <- mean(logit_CVgeneric)
+
+#########-------- WAY 2
+train_data_2$expert_label <- as.factor(train_data_2$expert_label)
+logit_2 <- glm(expert_label ~ NDAI+SD+CORR+AF, data=train_data_2, family='binomial')
+#summary(logit)
+test_logit_prob_2 <- predict(logit_2, newdata=test_data_2, type='response')
+pred_logit_2 <- rep(-1,length(test_logit_prob_2))
+pred_logit_2[test_logit_prob_2>=0.8] <- 1
+table(test_data_2$expert_label, pred_logit_2, dnn = c('Actual Group','Predicted Group'))
+logit_accuracy_test_2 <- accuracy_test(test_data_2$expert_label, pred_logit_2)
+logit_accuracy_test_2
+
+logit_CVgeneric_2 <- CVgeneric("logistic regression", sub_training_features, training_labels , 10, accuracy_test, CVgeneric_way2)
+logit_CVmean_2 <- mean(logit_CVgeneric_2)
+```
+## ALL 
+```{r}
+train_image$expert_label <- as.factor(train_image$expert_label)
+logit_full <- glm(expert_label ~ NDAI+SD+CORR+AF+AN+BF+CF+DF, data=train_image, family='binomial')
+test_logit_prob_full <- predict(logit_full, newdata=test_image, type='response')
+pred_logit_full <- rep(-1,length(test_logit_prob_full))
+pred_logit_full[test_logit_prob_full>= 0.8] <- 1
+table(test_image$expert_label, pred_logit_full, dnn = c('Actual Group','Predicted Group'))
+logit_accuracy_test_full <- accuracy_test(test_image$expert_label, pred_logit_full)
+logit_accuracy_test_full
+
+logit_CVgeneric_full <- CVgeneric("logistic regression", training_features, training_labels , 10, accuracy_test)
+logit_CVmean_full <- mean(lda_CVgeneric)
+```
+
+
+#### SVM
+```{r}
+library(SparseM)
+library(e1071)
+library(ROCR)
+
+set.seed(1)
+svm_data <- sample_n(train_image, 0.1*nrow(train_image))
+svmperf <- function (cost = 1, gamma = 1) {
+    model <- svm(as.factor(expert_label) ~ NDAI+CORR+AF+SD, data=svm_data, kernel = 'radial', cost = cost, gamma = gamma, probability=TRUE)
+    pred <- predict (model, test_image, probability=TRUE, decision.values=TRUE)
+    prob <- attr(pred, "probabilities")[,2]
+
+    roc_pred <- prediction(prob, test_image$expert_label == 1)
+    perf <- performance(roc_pred, "tpr", "fpr")
+
+    data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], 
+                threshold = perf@alpha.values [[1]],
+                cost = cost, gamma = gamma)
+}
+
+df <- data.frame ()
+for (cost in -1:1){
+  df <- rbind(df, svmperf (cost = 2^cost))
+}
+
+df <- df[order(df$tpr, decreasing=TRUE),]
+df <- mutate(df, diff = df$tpr - df$fpr)
+max_diff <- which.max(df$diff)
+opt <- df[max_diff,]
+### ROC curve
+# plot(df$fpr, df$tpr)
+# points(x = opt$fpr, y=opt$tpr , col="red", pch = 19)
+cut <- opt$threshold
+cut
+
+#head(subset(df, fpr < 0.2))
+
+## from the ROCR package
+#p <- prediction(prob, test_image$expert_label) %>%
+#  performance(measure = "tpr", x.measure = "fpr")
+
+#plot(p)
+
+svm_model <- svm(expert_label ~ NDAI+CORR+AF+SD, data=svm_data, kernel = 'radial', cost = cut)
+svm_test_pred <- predict(svm_model, test_image)
+table(test_image$expert_label, svm_test_pred, dnn = c('Actual Group','Predicted Group'))
+svm_accuracy_test <- sum(test_image$expert_label == svm_test_pred)/nrow(test_image)
+svm_accuracy_test
+
+svm_CVgeneric <- CVgeneric("svm", sub_training_features, training_labels , 10, accuracy_test)
+svm_CVmean <- mean(svm_CVgeneric)
+
+###### ------------ WAY 2
+set.seed(1)
+svm_data_2 <- sample_n(train_data_2, 0.1*nrow(train_data_2))
+svmperf <- function (cost = 1, gamma = 1) {
+    model <- svm(expert_label ~ NDAI+CORR+AF+SD, data=svm_data_2, kernel = 'radial', cost = cost, gamma = gamma, probability=TRUE)
+    pred <- predict (model, test_data_2, probability=TRUE, decision.values=TRUE)
+    prob <- attr(pred, "probabilities")[,2]
+
+    roc_pred <- prediction(prob, test_data_2$expert_label == 1)
+    perf <- performance(roc_pred, "tpr", "fpr")
+
+    data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], 
+                threshold = perf@alpha.values [[1]],
+                cost = cost, gamma = gamma)
+}
+
+df <- data.frame ()
+for (cost in -1:1){
+  df <- rbind(df, svmperf (cost = 2^cost))
+}
+
+df <- df[order(df$tpr, decreasing=TRUE),]
+df <- mutate(df, diff = df$tpr - df$fpr)
+max_diff <- which.max(df$diff)
+opt <- df[max_diff,]
+cut <- opt$threshold
+cut
+
+svm_model_2 <- svm(expert_label ~ NDAI+CORR+AF+SD, data=svm_data_2, kernel = 'radial', cost = cut)
+svm_test_pred_2 <- predict(svm_model_2, test_data_2)
+table(test_data_2$expert_label, svm_test_pred_2, dnn = c('Actual Group','Predicted Group'))
+svm_accuracy_test_2 <- sum(test_data_2$expert_label == svm_test_pred_2)/nrow(test_data_2)
+svm_accuracy_test_2
+svm_CVgeneric_2 <- CVgeneric("svm", sub_training_features, training_labels , 10, accuracy_test, CVgeneric_way2)
+svm_CVmean_2 <- mean(svm_CVgeneric_2)
+```
+## ALL
+```{r}
+svm_model_full <- svm(expert_label ~ NDAI+CORR+AF+SD+AN+BF+CF+DF, data=svm_data, kernel = 'radial', cost = cut)
+svm_test_pred_full <- predict(svm_model_full, test_image)
+table(test_image$expert_label, svm_test_pred_full, dnn = c('Actual Group','Predicted Group'))
+svm_accuracy_test_full <- sum(test_image$expert_label == svm_test_pred_full)/nrow(test_image)
+svm_accuracy_test_full
+## kernel = radial / linear
+## tuning parameter -> in radial 
+
+svm_CVgeneric_full <- CVgeneric("svm", training_features, training_labels , 10, accuracy_test)
+svm_CVmean_full <- mean(svm_CVgeneric)
+```
+
+#### classificationn tree
+```{r}
+library(rpart)
+tree <- rpart(expert_label ~ NDAI+CORR+AF+SD, data = train_image, method = "class")
+#plot(tree)
+#text(tree, use.n=TRUE, all=TRUE, cex=.5)
+
+# prune the tree 
+tree_pruned <- prune(tree, cp=tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"])
+#tree_pruned$splits
+#print(tree_pruned)
+
+# plot the pruned tree 
+plot(tree_pruned, uniform=TRUE, main="Pruned Classification Tree for Labels")
+text(tree_pruned, use.n=TRUE, all=TRUE, cex=.8)
+
+tree_test_predict <- predict(tree_pruned, test_image, type = "class")
+conf.matrix <- table(test_image$expert_label, tree_test_predict)
+tree_accuracy_test <- accuracy_test(test_image$expert_label, tree_test_predict)
+tree_accuracy_test
+
+set.seed(1)
+tree_CVgeneric <- CVgeneric("classification tree", sub_training_features, training_labels, 10, accuracy_test)
+tree_CVmean <- mean(tree_CVgeneric)
+
+###### ----------------- WAY 2
+tree_2 <- rpart(expert_label ~ NDAI+CORR+AF+SD, data = train_data_2, method = "class")
+# prune the tree 
+tree_pruned_2 <- prune(tree_2, cp=tree_2$cptable[which.min(tree_2$cptable[,"xerror"]),"CP"])
+
+tree_test_predict_2 <- predict(tree_pruned_2, test_data_2, type = "class")
+conf.matrix <- table(test_data_2$expert_label, tree_test_predict_2)
+tree_accuracy_test_2 <- accuracy_test(test_data_2$expert_label, tree_test_predict_2)
+tree_accuracy_test_2
+
+set.seed(1)
+tree_CVgeneric_2 <- CVgeneric("classification tree", sub_training_features, training_labels, 10, accuracy_test, CVgeneric_way2)
+tree_CVmean_2 <- mean(tree_CVgeneric_2)
+```
+## ALL
+```{r}
+tree_full <- rpart(expert_label ~ NDAI+CORR+AF+SD +AN+BF+CF+DF, data = train_image, method = "class")
+# prune the tree 
+tree_pruned_full <- prune(tree_full, cp=tree_full$cptable[which.min(tree_full$cptable[,"xerror"]),"CP"])
+
+tree_test_predict_full <- predict(tree_pruned_full, test_image, type = "class")
+conf.matrix <- table(test_image$expert_label, tree_test_predict_full)
+tree_accuracy_test_full <- accuracy_test(test_image$expert_label, tree_test_predict_full)
+tree_accuracy_test_full
+
+set.seed(1)
+tree_CVgeneric_full <- CVgeneric("classification tree", training_features, training_labels, 10, accuracy_test)
+tree_CVmean_full <- mean(tree_CVgeneric)
+```
+
+
+#### random forest
+### Tuning parameter
+```{r}
+library(randomForest)
+sample <- sample_n(train_image, floor(0.1*nrow(train_image)))
+
+control <- trainControl(method="repeatedcv", number=10, repeats=3, search="random")
+set.seed(123)
+mtry <- sqrt(ncol(sample))
+rf_random <- train(as.factor(expert_label)~ NDAI + SD + CORR + AF, data=sample, method="rf", metric= "Accuracy", tuneLength=15, trControl=control)
+random <- print(rf_random)
+mtry_tune <- plot(rf_random, main = "RF tuning mtry")
+jpeg('images/mtry_tuning.jpg')
+mtry_tune
+dev.off()
+### highest accuracy when mtry = 2
+mean <- c()
+nodesize <- seq(10,50,5)
+for (i in 1:length(nodesize)) {
+  rf <- randomForest(as.factor(expert_label) ~  NDAI + SD + CORR + AF, data = sample, mtry = 2, nodesize = nodesize[i])
+  mean[i] <- mean(rf$err.rate[,1])
+}
+jpeg('images/nodesize_tuning.jpg')
+plot(mean, type = "l", main = "RF tunning node_size", ylab="error rate" , xlab = "node size")
+dev.off()
+nodesize[which.min(mean)]
+## lowest error whenn nodesize = 20
+```
+
+```{r}
+set.seed(2)
+#rf <- randomForest(as.factor(expert_label) ~  NDAI + SD + CORR + AF, data = train_image, maxnodes = 2)
+rf <- randomForest(as.factor(expert_label) ~  NDAI + SD + CORR + AF, data = train_image, nodesize = 20, mtry = 2)
+getTree(rf, k =1, labelVar = TRUE)
+
+plot(rf)
+# Predicting response variable
+predicted_response = predict(rf , test_image)
+forest_accuracy_test <- accuracy_test(predicted_response, test_image$expert_label)
+forest_accuracy_test
+
+set.seed(123)
+forest_CVgeneric <- CVgeneric("random forest", sub_training_features, training_labels, 10, accuracy_test)
+forest_CVmean <- mean(forest_CVgeneric)
+
+### ---------- WAY 2
+set.seed(2)
+rf_2 <- randomForest(as.factor(expert_label) ~  NDAI + SD + CORR + AF, data = train_data_2, nodesize = 10)
+
+# Predicting response variable
+predicted_response_2 <- predict(rf_2 , test_data_2)
+forest_accuracy_test_2 <- accuracy_test(predicted_response_2, test_data_2$expert_label)
+forest_accuracy_test_2
+
+set.seed(3)
+forest_CVgeneric_2 <- CVgeneric_way2("random forest", sub_training_features, training_labels, 10, accuracy_test)
+forest_CVmean_2 <- mean(forest_CVgeneric_2)
+forest_CVmean_2
+```
+split point -> threshold 
+
+```{r}
+set.seed(123)
+rf_full <- randomForest(as.factor(expert_label) ~  NDAI + SD + CORR + AF + AN + BF + CF + DF, data = train_image, mtry = 2, nodesize = 20)
+# Predicting response variable
+predicted_response_full <- predict(rf_full , test_image)
+forest_accuracy_test_full <- accuracy_test(predicted_response_full, test_image$expert_label)
+forest_accuracy_test_full
+
+set.seed(123)
+forest_CVgeneric_full <- CVgeneric("random forest", training_features, training_labels, 10, accuracy_test)
+forest_CVmean_full <- mean(forest_CVgeneric_full)
+```
+
+## Combine the result into tables
+```{r}
+combined_accuracy <- data.frame()
+combined_accuracy <- rbind(as.data.frame(t(lda_CVgeneric)), as.data.frame(t(qda_CVgeneric)), as.data.frame(t(logit_CVgeneric)),
+                           as.data.frame(t(svm_CVgeneric)), as.data.frame(t(tree_CVgeneric)), as.data.frame(t(forest_CVgeneric)))
+labels <- c("lda","qda","logistic regression", "SVM", "classification tree", "random forest")
+mean <- c(lda_CVmean, qda_CVmean, logit_CVmean, svm_CVmean, tree_CVmean, forest_CVmean)
+test_acc <- c(lda_accuracy_test, qda_accuracy_test, logit_accuracy_test, svm_accuracy_test, tree_accuracy_test, forest_accuracy_test)
+
+combined_accuracy <- data.frame(method = labels, test_accuracy = test_acc, mean_CV = mean, combined_accuracy)
+colnames(combined_accuracy) <- c("method","test_accuracy", "CV_accuracy",  "accuracy_fold1", "accuracy_fold2", "accuracy_fold3", "accuracy_fold4", "accuracy_fold5", "accuracy_fold6", "accuracy_fold7", "accuracy_fold8", "accuracy_fold9", "accuracy_fold10")
+combined_accuracy
+write.csv(combined_accuracy, file = "accuracy.csv")
+```
+## WAY 2
+```{r}
+combined_accuracy_2 <- data.frame()
+combined_accuracy_2 <- rbind(as.data.frame(t(lda_CVgeneric_2)), as.data.frame(t(qda_CVgeneric_2)), as.data.frame(t(logit_CVgeneric_2)), as.data.frame(t(svm_CVgeneric_2)), as.data.frame(t(tree_CVgeneric_2)), as.data.frame(t(forest_CVgeneric_2)))
+labels <- c("lda","qda","logistic regression", "SVM", "classification tree", "random forest")
+mean_2 <- c(lda_CVmean_2, qda_CVmean_2, logit_CVmean_2, svm_CVmean_2, tree_CVmean_2, forest_CVmean_2)
+test_acc_2 <- c(lda_accuracy_test_2, qda_accuracy_test_2, logit_accuracy_test_2, svm_accuracy_test_2, tree_accuracy_test_2, forest_accuracy_test_2)
+
+combined_accuracy_2 <- data.frame(method = labels, test_accuracy = test_acc_2, mean_CV = mean_2, combined_accuracy_2 )
+colnames(combined_accuracy_2) <- c("method", "test_accuracy", "CV_accuracy","accuracy_fold1", "accuracy_fold2", "accuracy_fold3", "accuracy_fold4", "accuracy_fold5", "accuracy_fold6", "accuracy_fold7", "accuracy_fold8", "accuracy_fold9", "accuracy_fold10")
+combined_accuracy_2
+write.csv(combined_accuracy_2, file = "accuracy_2.csv")
+```
+
+## ALL
+```{r}
+combined_accuracy_full <- data.frame()
+combined_accuracy_full <- rbind(as.data.frame(t(lda_CVgeneric_full)), as.data.frame(t(qda_CVgeneric_full)), as.data.frame(t(logit_CVgeneric_full)), as.data.frame(t(svm_CVgeneric_full)), as.data.frame(t(tree_CVgeneric_full)), as.data.frame(t(forest_CVgeneric_full)))
+labels <- c("lda","qda","logistic regression", "SVM", "classification tree", "random forest")
+mean_full <- c(lda_CVmean_full, qda_CVmean_full, logit_CVmean_full, svm_CVmean_full, tree_CVmean_full, forest_CVmean_full)
+test_acc_full <- c(lda_accuracy_test_full, qda_accuracy_test_full, logit_accuracy_test_full, svm_accuracy_test_full, tree_accuracy_test_full, forest_accuracy_test_full)
+
+combined_accuracy_full <- data.frame(method = labels, test_accuracy = test_acc_full, mean_CV = mean_full,combined_accuracy_full)
+colnames(combined_accuracy_full) <- c("method", "test_accuracy", "CV_accuracy","accuracy_fold1", "accuracy_fold2", "accuracy_fold3", "accuracy_fold4", "accuracy_fold5", "accuracy_fold6", "accuracy_fold7", "accuracy_fold8", "accuracy_fold9", "accuracy_fold10")
+combined_accuracy_full
+write.csv(combined_accuracy_full, file = "accuracy_full.csv")
+```
+
+## Assumptions
+```{r}
+# On cloud_clear: predictor variables distribution check (if they're normal)
+ggplot(cloud_clear, aes(x = NDAI)) + geom_histogram(aes(y=..density..), binwidth=.2, colour="black", fill="white") +
+    geom_density(alpha=.2, fill="#FF6666") + xlab("NDAI") + ggtitle("Distribution of NDAI")
+ggplot(cloud_clear, aes(x = CORR)) + geom_histogram(aes(y=..density..), binwidth=.03, colour="black", fill="white") +
+    geom_density(alpha=.2, fill="#FF6666") + xlab("CORR") + ggtitle("Distribution of CORR")
+ggplot(cloud_clear, aes(x = AF)) + geom_histogram(aes(y=..density..), binwidth=10, colour="black", fill="white") +
+    geom_density(alpha=.2, fill="#FF6666") + xlab("AF") + ggtitle("Distribution of AF")
+ggplot(cloud_clear, aes(x = SD)) + geom_histogram(aes(y=..density..), binwidth=1.8, colour="black", fill="white") +
+    geom_density(alpha=.2, fill="#FF6666") + xlab("SD") + ggtitle("Distribution of SD")
+
+cov(train_image %>% filter(expert_label == -1) %>% select(NDAI, CORR, AF, SD))
+cov(train_image %>% filter(expert_label == 1) %>% select(NDAI, CORR, AF, SD))
+```
+
+
+### 3.(b)
+```{r}
+# ROC curves
+library(ROCR)
+ROC_curve <- function(df, opt) {
+  plot <- ggplot(data = df, aes(fpr, tpr)) + geom_line(size = 3) + geom_point(aes(x = opt$fpr, y=opt$tpr , size = opt$threshold, col = "red")) + theme(legend.position=c(.5, .5))
+  return (plot)
+}
+
+####----------- LDA
+lda_model <- predict(train_lda, val_image)
+
+pred <- prediction(lda_model$posterior[,2], val_image$expert_label)
+perf <- performance(pred, "tpr", "fpr")
+df <- data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], threshold = perf@alpha.values [[1]])
+df <- mutate(df, diff = tpr-fpr)
+opt <- df[which.max(df$diff),]
+cut <- opt$threshold
+cut
+p1 <- ROC_curve(df, opt) + ggtitle("ROC curve LDA")
+p1
+jpeg('images/lda_ROC.jpg')
+p1
+dev.off()
+
+AUC_lda <- pred %>%
+           performance(measure = "auc") %>%
+          .@y.values
+
+
+####----------------
+### QDA 
+
+qda_model <- predict(train_qda, val_image)
+pred <- prediction(qda_model$posterior[,2], val_image$expert_label)
+perf <- performance(pred, "tpr", "fpr")
+df <- data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], 
+                threshold = perf@alpha.values [[1]])
+df <- mutate(df, diff = tpr-fpr)
+opt <- df[which.max(df$diff),]
+
+cut <- opt$threshold
+cut
+
+p2 <- ROC_curve(df, opt) + ggtitle("ROC curve QDA")
+
+AUC_qda <- pred %>%
+            performance(measure = "auc") %>%
+            .@y.values
+
+## -------------------- LOG
+
+train_image$expert_label <- as.factor(train_image$expert_label)
+logit <- glm(expert_label ~ NDAI+SD+CORR+AF, data=train_image, family='binomial')
+
+val_logit_prob <- predict(logit, newdata=val_image, probability =TRUE)
+
+#### ------ logit
+
+pred <- prediction(val_logit_prob, val_image$expert_label)
+# p3 <- pred %>%
+#   performance(measure = "tpr", x.measure = "fpr")
+perf <- performance(pred, "tpr", "fpr")
+
+df <- data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], 
+                threshold = perf@alpha.values [[1]])
+df <- mutate(df, diff = tpr-fpr)
+opt <- df[which.max(df$diff),]
+
+cut <- opt$threshold
+cut
+p3 <- ROC_curve(df,opt) + ggtitle("ROC curve Logistic Regression")
+p3
+
+# Logistic regression AUC
+AUC_log <- pred%>%
+            performance(measure = "auc") %>%
+            .@y.values
+
+########### ---------- SVM
+svm_data$expert_label <- as.factor(svm_data$expert_label)
+model <- svm(expert_label ~ NDAI+CORR+AF+SD, data=svm_data, kernel = 'radial', cost = cut, probability=TRUE)
+pred <- predict(model, val_image, probability=TRUE, decision.values=TRUE)
+prob <- attr(pred, "probabilities")[,1]
+
+pred <- prediction(prob, val_image$expert_label == 1)
+perf <- performance(pred, "tpr", "fpr")
+df <- data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], threshold = perf@alpha.values [[1]])
+df <- mutate(df, diff = tpr-fpr)
+opt <- df[which.max(df$diff),]
+
+cut <- opt$threshold
+cut
+
+p4 <- ROC_curve(df,opt) + ggtitle("ROC curve SVM")
+p4
+# SVM
+
+AUC_svm<- prediction(prob, val_image$expert_label == 1) %>% 
+              performance(measure = "auc") %>%
+              .@y.values
+
+############---------- tree
+tree <- rpart(expert_label ~ NDAI+CORR+AF+SD, data = train_image)
+
+tree_pruned <- prune(tree, cp=tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"])
+tree_val_predict <- predict(tree_pruned, val_image, type = "prob")
+
+pred <- prediction(tree_val_predict[,2], val_image$expert_label)
+# p3 <- pred %>%
+#   performance(measure = "tpr", x.measure = "fpr")
+perf <- performance(pred, "tpr", "fpr")
+
+df <- data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], 
+                threshold = perf@alpha.values [[1]])
+df <- mutate(df, diff = tpr-fpr)
+opt <- df[which.max(df$diff),]
+
+#df <- df[order(df$tpr, decreasing=TRUE),]
+cut <- opt$threshold
+cut
+p5 <- ggplot(data = df, aes(x= fpr, y = tpr)) + geom_line() + geom_point(aes(x=opt$fpr, y=opt$tpr, col = "red"))
+p5
+
+p5 <- ROC_curve(df,opt) + ggtitle('ROC curve classification tree')
+
+## classificationn tree AUC
+AUC_tree <- prediction(tree_val_predict[,2], val_image$expert_label) %>%
+            performance(measure = "auc") %>%
+            .@y.values
+
+########### ---------- RF
+set.seed(123)
+rf = randomForest(as.factor(expert_label) ~  NDAI + SD + CORR + AF, data = train_image, nodesize = 20 ,mtry = 2)
+forest_val_predict <- predict(rf, val_image, type ="prob")
+pred <- prediction(forest_val_predict[,2], val_image$expert_label)
+perf <-performance(pred, "tpr", "fpr")
+df <- data.frame (fpr = perf@x.values [[1]], tpr = perf@y.values [[1]], 
+                threshold = perf@alpha.values [[1]])
+df <- mutate(df, diff = tpr-fpr)
+opt <- df[which.max(df$diff),]
+
+p6 <- ggplot(data = df, aes(x = fpr, y=tpr)) + geom_line() + geom_point(aes(x = opt$fpr, y= opt$tpr, col = "red")) + ggtitle("ROC curve Random Forest")
+p6 
+
+p6<-ROC_curve(df,opt) + ggtitle("ROC curve Random Forest")
+
+
+## maxnodes = 3 to avoid overfittinng
+
+# rf = randomForest(expert_label ~  NDAI + SD + CORR + AF, data = train_image, maxnodes = 3)
+# forest_val_predict <- predict(rf, val_image, type = "prob")
+AUC_forest <- prediction(forest_val_predict[,2], val_image$expert_label) %>%
+            performance(measure = "auc") %>%
+            .@y.values
+AUC_forest
+# p6 <- prediction(forest_val_predict[,2], val_image$expert_label) %>%
+#             performance("tpr", "fpr")
+# plot(p6)
+
+
+##--------------
+AUC <- data.frame(method =  c("lda", "qda", "logistic regression", "svm", "classification tree", "random forest"))
+AUC[1,2] <- AUC_lda
+AUC[2,2] <- AUC_qda
+AUC[3,2] <- AUC_log
+AUC[4,2] <- AUC_svm
+AUC[5,2] <- AUC_tree
+AUC[6,2] <- AUC_forest
+colnames(AUC) <- c("method", "AUC of ROC")
+write.csv(AUC, "auc.csv")
+```
+
+
+3(c) Bonus
+```{r}
+p_lda <- precision(as.factor(test_lda_pred), as.factor(test_image$expert_label))
+p_qda <- precision(as.factor(test_qda_pred), as.factor(test_image$expert_label))
+p_logit <- precision(as.factor(pred_logit), as.factor(test_image$expert_label))
+p_svm <- precision(as.factor(svm_test_pred), as.factor(test_image$expert_label))
+p_tree <- precision(as.factor(tree_test_predict), as.factor(test_image$expert_label))
+p_forest <- precision(as.factor(predicted_response), as.factor(test_image$expert_label))
+
+labels <- c("lda","qda","logistic regression", "svm","classification tree", "random forest")
+method1_precision <- c(p_lda, p_qda,p_logit,p_svm,p_tree,p_forest)
+
+p_lda_2 <- precision(as.factor(test_lda_pred_2), as.factor(test_image$expert_label))
+p_qda_2 <- precision(as.factor(test_qda_pred_2), as.factor(test_image$expert_label))
+p_logit_2 <- precision(as.factor(pred_logit_2), as.factor(test_image$expert_label))
+p_svm_2 <- precision(as.factor(svm_test_pred_2), as.factor(test_image$expert_label))
+p_tree_2 <- precision(as.factor(tree_test_predict_2), as.factor(test_image$expert_label))
+p_forest_2 <- precision(as.factor(predicted_response_2), as.factor(test_image$expert_label))
+
+method2_precision <- c(p_lda_2, p_qda_2,p_logit_2,p_svm_2,p_tree_2,p_forest_2)
+
+r_lda <- recall(as.factor(test_lda_pred), as.factor(test_image$expert_label))
+r_qda <- recall(as.factor(test_qda_pred), as.factor(test_image$expert_label))
+r_logit <- recall(as.factor(pred_logit), as.factor(test_image$expert_label))
+r_svm <- recall(as.factor(svm_test_pred), as.factor(test_image$expert_label))
+r_tree <- recall(as.factor(tree_test_predict), as.factor(test_image$expert_label))
+r_forest <- recall(as.factor(predicted_response), as.factor(test_image$expert_label))
+
+labels <- c("lda","qda","logistic regression", "svm","classification tree", "random forest")
+method1_recall <- c(r_lda, r_qda,r_logit,r_svm,r_tree,r_forest)
+
+r_lda_2 <- recall(as.factor(test_lda_pred_2), as.factor(test_image$expert_label))
+r_qda_2 <- recall(as.factor(test_qda_pred_2), as.factor(test_image$expert_label))
+r_logit_2 <- recall(as.factor(pred_logit_2), as.factor(test_image$expert_label))
+r_svm_2 <- recall(as.factor(svm_test_pred_2), as.factor(test_image$expert_label))
+r_tree_2 <- recall(as.factor(tree_test_predict_2), as.factor(test_image$expert_label))
+r_forest_2 <- recall(as.factor(predicted_response_2), as.factor(test_image$expert_label))
+
+method2_recall <- c(r_lda_2, r_qda_2,r_logit_2,r_svm_2,r_tree_2,r_forest_2)
+
+f_lda <- F_meas(as.factor(test_lda_pred), as.factor(test_image$expert_label))
+f_qda <- F_meas(as.factor(test_qda_pred), as.factor(test_image$expert_label))
+f_logit <- F_meas(as.factor(pred_logit), as.factor(test_image$expert_label))
+f_svm <- F_meas(as.factor(svm_test_pred), as.factor(test_image$expert_label))
+f_tree <- F_meas(as.factor(tree_test_predict), as.factor(test_image$expert_label))
+f_forest <- F_meas(as.factor(predicted_response), as.factor(test_image$expert_label))
+
+labels <- c("lda","qda","logistic regression", "svm","classification tree", "random forest")
+method1_Fmeas <- c(f_lda, f_qda,f_logit,f_svm,f_tree,f_forest)
+
+f_lda_2 <- F_meas(as.factor(test_lda_pred_2), as.factor(test_image$expert_label))
+f_qda_2 <- F_meas(as.factor(test_qda_pred_2), as.factor(test_image$expert_label))
+f_logit_2 <- F_meas(as.factor(pred_logit_2), as.factor(test_image$expert_label))
+f_svm_2 <- F_meas(as.factor(svm_test_pred_2), as.factor(test_image$expert_label))
+f_tree_2 <- F_meas(as.factor(tree_test_predict_2), as.factor(test_image$expert_label))
+f_forest_2 <- F_meas(as.factor(predicted_response_2), as.factor(test_image$expert_label))
+
+method2_Fmeas <- c(f_lda_2,f_qda_2,f_logit_2,f_svm_2,f_tree_2,f_forest_2)
+
+
+p_r <- as.data.frame(cbind(labels, method1_precision, method2_precision, method1_recall, method2_recall, method1_Fmeas, method2_Fmeas))
+colnames(p_r) <- c("methods", "method 1 precision", "method 2 precision", "method 1 recall", "method 2 recall", "method 1 Fmeas", "method 2 Fmeas")
+
+write.csv(p_r, "precision_recall.csv")
+```
+
+
+### 4. Diagnostics 
+####a)
+```{r} 
+## STABILITY / CONVERGENCE
+### plot 1: accuracy as the function of proportion of data -----------------
+set.seed(123)
+accuracy <- c()
+for (i in 74:100) {
+  train <- sample_n(train_image, (i/100)*nrow(train_image))
+  features <- colnames(train)[!colnames(train) %in% c("x", "y","expert_label")]
+  accuracy[i] <- random_forest_classifier(features, train, test_image, accuracy_test)
+}
+acc <- data.frame(x = 1:100, accuracy = accuracy*100)
+ggplot(data = acc, aes(x = x, y = accuracy)) + geom_point() + geom_line() + ggtitle("Accuracy Test of Random Forest") + xlab("Percentage of data") + ylab("Accuracy (in %)")  + ylim(90,100) + geom_point(aes(x = acc[which.max(accuracy), ]$x, y = acc[which.max(accuracy), ]$accuracy, col = max(accuracy)))
+
+which.max(accuracy) #9% of data has the maximum accuracy
+
+rf <- randomForest(expert_label ~ NDAI + SD + CORR + DF+ CF + BF + AF + AN, data = train_image, mtry = 2, nodesize=20)
+
+plot(rf, main = "Error plot as a function of number of trees")
+legend("top", colnames(rf$err.rate),col=1:4,cex=0.8,fill=1:4)
+
+####### plot 3 & 4: variable importance and mean ginni index -----------
+var_one <- c()
+var_imp <- c()
+for (i in 1:49) {
+  portion <- seq(10,100, length.out = 49)[i]
+  train <- sample_n(train_image, (portion/100)*nrow(train_image))
+  rf = randomForest(expert_label ~ NDAI + SD + CORR + DF+ CF + BF + AF + AN, data = train, ntree=3, mtry=2)
+#  mtry[i] <- rf$mtry
+#  mse[i] <- rf$mse
+#  err[i] <- rf$err.rate
+  var.imp = data.frame(importance(rf, type=2))
+  var.imp$Variables = row.names(var.imp)
+  imp <- var.imp[order(var.imp$MeanDecreaseGini,decreasing = T),]
+  var_one[i] <- imp$Variables[1]
+  ## the importance of variable of first split
+  var_imp[i] <- imp$MeanDecreaseGini[1]
+} 
+
+var_one_tbl <- data.frame(index = 1:length(var_one), var_one = var_one)
+# filter <- filter(var_one_tbl, var_one == "NDAI")
+# nrow(filter)/nrow(var_one_tbl)
+# table(var_one)
+#var_one
+ggplot(data = var_one_tbl, aes(x = var_one)) + geom_bar() + ggtitle("The occurence of the 'first split' variable") + 
+  xlab('variable') + ylab('occurence ')
+
+#the variable of first split
+table(var_one)
+var_imp_tbl <- data.frame(portion = seq(10,100, length.out = 49), var_imp = var_imp)
+ggplot(data = var_imp_tbl, aes(x=portion, y = var_imp)) + geom_line() + ggtitle("MeanDecreaseGini of increasing portion of train data")
+#plot(var_imp, type = "l", main ="MeanDecreaseGini of increasing portion of train data")
+#print(rf)
+
+rf <- randomForest(as.factor(expert_label) ~ NDAI + SD + CORR + DF+ CF + BF + AF + AN, data = train_image, maxnode = 4, ntree = 100)
+
+
+########################
+oob.err=double(8)
+test.err=double(8)
+
+#mtry is no of Variables randomly chosen at each split
+for(mtry in 1:8) {
+  rf = randomForest(expert_label ~ NDAI + SD + CORR + DF+ CF + BF + AF + AN , data = train_image, mtry=mtry, maxnode = 3, ntree=100) 
+  oob.err[mtry] = rf$err.rate[,'OOB'][100] #Error of all Trees fitted 
+  
+  pred <- predict(rf, test_image) #Predictions on Test Set for each Tree
+  test.err[mtry]= 1-accuracy_test(pred, test_image$expert_label)
+#  cat(mtry," ") #printing the output to the console
+}
+test.err
+
+library(graphics)
+matplot(1:mtry , cbind(oob.err,test.err), pch=19 , col=c("red","blue"), type="b", ylab="Error rate",xlab="Number of Predictors Considered at each Split", main = "Error rate with respect to the number of predictors at each split")
+legend("topright",legend=c("Out of Bag Error","Classification Error"),pch=19, col=c("red","blue"))
+```
+Plotting one example of classification tree done by Random forest in 2d.
+```{r}
+## example of a tree in random forest
+rf <- randomForest(as.factor(expert_label) ~  NDAI + SD + CORR + AF, data = train_image, maxnode = 3)
+predicted_response = predict(rf , test_image, type = "prob")
+getTree(rf, k=1, labelVar = TRUE)
+```
+```{r}
+te <- mutate(test_image, pred = predicted_response[,2])
+ggplot(data=te, aes(x = SD, y=NDAI, col = pred)) + geom_point(aes(alpha = 2)) + geom_vline(xintercept=5.15, col="red") + geom_hline(yintercept=1.182647, col = "red")
+```
+
+```{r}
+pca_prcomp <- prcomp(train_image[,-3], scale. = TRUE)
+eigenvalues <- pca_prcomp$sdev^2
+eigs_cum = cumsum(eigenvalues)/sum(eigenvalues)
+
+ggplot() + geom_point(aes(x = 1:length(eigenvalues), y=eigs_cum)) +
+   labs(x = "PCs", y = "cumulative fraction of total variance explained")
+
+## using PC score as the new features =  the first 2 already captures most variability in data
+PC_data <- data.frame(expert_label = train_image$expert_label, pca_prcomp$x)
+
+##want just the first 3 PCAs : expert labels + 2 PCs
+PC_data <- PC_data[,1:3]
+plot(PC_data[,2:3], col = PC_data$expert_label + 2)
+
+forest_PC <- randomForest(as.factor(expert_label) ~ ., data = PC_data, maxnode = 3, mtry = 2)
+
+getTree(forest_PC)
+train_pca_predict <- predict(forest_PC, newdata = PC_data[,2:3])
+train <- cbind(PC_data, as.data.frame(train_pca_predict))
+ggplot(data=train, aes(x = train$PC1, y=train$PC2, col = train$expert_label)) + geom_point(aes(alpha = 10))+ geom_vline(xintercept=-0.4634125, col="red") + geom_hline(yintercept = 0.6663422, col = "red")
+ 
+```
+
+####b)
+```{r}
+missclassified <- test_image %>% filter(test_image$expert_label != tree_test_predict)
+ggplot(data = missclassified) + geom_point(aes(x=x, y=y)) + ggtitle("Missclassified points based on classification tree")
+plot(missclassified$CORR, col = (missclassified$expert_label+2))
+missclassified$expert_label <- as.factor(missclassified$expert_label)
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = CORR, colour = expert_label)) 
+# most of the missclassified labels are with higher CORR, near to 0.2
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = NDAI, colour = expert_label))
+# scattered throughout all values of NDAI
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = SD, colour = expert_label)) 
+# mostly in low SD numbers ranging from 0-20
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = DF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = CF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = BF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = AF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = AN, colour = expert_label)) 
+#similar trends in all these angles
+missclassified[which(missclassified$expert_label == -1), ]
+
+missclassified <- test_image %>% filter(test_image$expert_label != svm_test_pred)
+ggplot(data = missclassified) + geom_point(aes(x=x, y=y)) + ggtitle("Missclassified points based on SVM")
+#similar regionn with the tree classification above
+#lower region(low x and low y ) and higher region(high x and high y)
+plot(missclassified$CORR, col = (missclassified$expert_label+2))
+missclassified$expert_label <- as.factor(missclassified$expert_label)
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = CORR, colour = expert_label)) 
+#mostly on CORR ranginng 0-0.2 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = NDAI, colour = expert_label)) 
+#scattered in ranging values of NDAI, but very little missclassification on NDAI value 0-1
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = SD, colour = expert_label)) 
+# mostly in SD values ranging from 0-20 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = DF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = CF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = BF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = AF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = AN, colour = expert_label)) 
+missclassified[which(missclassified$expert_label == -1), ]
+
+#the points that get missclassified are not exactly differennt using different methods, however, has similar trends on the variables.
+```
+
+```{r}
+#misclassification, plots between true data and errors, using features against each other
+
+ggplot() + geom_point(aes(x = test_image$NDAI, y = test_image$AF, colour = test_image$expert_label)) + 
+  geom_point(aes(x = missclassified$NDAI, y = missclassified$AF), colour = "red")
+
+ggplot() + geom_point(aes(x = test_image$NDAI, y = test_image$CORR, colour = test_image$expert_label)) + 
+  geom_point(aes(x = missclassified$NDAI, y = missclassified$CORR), colour = "red")
+
+ggplot() + geom_point(aes(x = test_image$NDAI, y = test_image$SD, colour = test_image$expert_label)) + 
+  geom_point(aes(x = missclassified$NDAI, y = missclassified$SD), colour = "red")
+
+ggplot() + geom_point(aes(x = test_image$CORR, y = test_image$SD, colour = test_image$expert_label)) + 
+  geom_point(aes(x = missclassified$CORR, y = missclassified$SD), colour = "red")
+
+ggplot() + geom_point(aes(x = test_image$CORR, y = test_image$AF, colour = test_image$expert_label)) + 
+  geom_point(aes(x = missclassified$CORR, y = missclassified$AF), colour = "red")
+
+ggplot() + geom_point(aes(x = test_image$AF, y = test_image$SD, colour = test_image$expert_label)) + 
+  geom_point(aes(x = missclassified$AF, y = missclassified$SD), colour = "red")
+```
+
+```{r}
+#CI for misclassified non cloud and cloud
+mis_cloud <- missclassified %>% filter(expert_label == 1)
+mis_clear <- missclassified %>% filter(expert_label == -1)
+
+#CI for NDAI
+cat("95% CI for NDAI of cloud data: ", c(mean(sample(mis_cloud, 10)$NDAI) - 1.96*sd(sample(mis_cloud, 10)$NDAI), ",",
+  mean(sample(mis_cloud, 10)$NDAI) + 1.96*sd(sample(mis_cloud, 10)$NDAI)))
+cat("95% CI for NDAI of no cloud data: ", c(mean(sample(mis_clear, 10)$NDAI) - 1.96*sd(sample(mis_clear, 10)$NDAI), ",",
+  mean(sample(mis_clear, 10)$NDAI) + 1.96*sd(sample(mis_clear)$NDAI)))
+
+
+#CI for SD
+cat("95% CI for SD of cloud data: ", c(mean(sample(mis_cloud, 10)$SD) - 1.96*sd(sample(mis_cloud, 10)$SD), ",",
+  mean(sample(mis_cloud, 10)$SD) + 1.96*sd(sample(mis_cloud, 10)$SD)))
+cat("95% CI for SD of no cloud data: ", c(mean(sample(mis_clear, 10)$SD) - 1.96*sd(sample(mis_clear, 10)$SD), ",",
+  mean(sample(mis_clear, 10)$SD) + 1.96*sd(sample(mis_clear)$SD)))
+
+
+#CI for CORR
+cat("95% CI for CORR of cloud data: ", c(mean(sample(mis_cloud, 10)$CORR) - 1.96*sd(sample(mis_cloud, 10)$CORR), ",",
+  mean(sample(mis_cloud, 10)$CORR) + 1.96*sd(sample(mis_cloud, 10)$CORR)))
+cat("95% CI for CORR of no cloud data: ", c(mean(sample(mis_clear, 10)$CORR) - 1.96*sd(sample(mis_clear, 10)$CORR), ",",
+  mean(sample(mis_clear, 10)$CORR) + 1.96*sd(sample(mis_clear)$CORR)))
+
+
+#CI for AF
+cat("95% CI for AF of cloud data: ", c(mean(sample(mis_cloud, 10)$AF) - 1.96*sd(sample(mis_cloud, 10)$AF), ",",
+  mean(sample(mis_cloud, 10)$AF) + 1.96*sd(sample(mis_cloud, 10)$AF)))
+cat("95% CI for AF of no cloud data: ", c(mean(sample(mis_clear, 10)$AF) - 1.96*sd(sample(mis_clear, 10)$AF), ",",
+  mean(sample(mis_clear, 10)$AF) + 1.96*sd(sample(mis_clear)$AF)))
+```
+
+###(c)
+```{r}
+## PCA
+##screeplot
+pca_prcomp <- prcomp(train_image[,-3], scale. = TRUE)
+## using PC score as the new features =  the first 2 already captures most variability in data
+PC_data <- data.frame(expert_label = train_image$expert_label, pca_prcomp$x)
+
+##want just the first 3 PCAs : expert labels + 2 PCs
+PC_data <- PC_data[,1:3]
+#plot(PC_data[,2:3], col = PC_data$expert_label)
+
+forest_PC <- randomForest(expert_label ~ .,data = PC_data, method = "class")
+#transform test into PCA
+test_pca <- predict(pca_prcomp, newdata = test_image[,-3])
+#test_pca <- data.frame(expert_label = test_image$expert_label, test_pca)
+test_pca <- as.data.frame(test_pca)
+test_pca <- test_pca[,1:2]
+
+#select the first 3 components
+pca_prcomp_test <- prcomp(test_image[,-3], scale. = TRUE)
+## using PC score as the new features =  the first 2 already captures most variability in data
+test_pca <- data.frame(expert_label = test_image$expert_label, pca_prcomp_test$x)
+test_pca <- test_pca[,1:3]
+#plot(test_pca[,2:3], col = test_pca[,1] + 2)
+
+#make prediction on test data
+forest_PC_test <- predict(forest_PC, test_pca, type = "class")
+
+accuracy_test(test_image$expert_label, forest_PC_test)
+
+pca_prcomp <- prcomp(test_image[,-3])
+plot(pca_prcomp$x[,1:2], col = forest_PC_test)
+
+biplot(pca_prcomp)
+```
+
+```{r}
+getModelInfo()$gbm$type
+objControl <- trainControl(method='cv', number=3, returnResamp='none', summaryFunction = twoClassSummary, classProbs = TRUE)
+trainDF <- train_image[c("expert_label","SD","NDAI","CORR","AF")]
+trainDF$expert_label[trainDF$expert_label == -1] <- "noncloud"
+trainDF$expert_label[trainDF$expert_label == 1] <- "cloud"
+
+trainDF$expert_label <- as.factor(trainDF$expert_label)
+objModel <- train(trainDF[,c(2:5)], trainDF[,1],
+                  method='gbm', 
+                  metric = "ROC", 
+                  trControl = objControl,
+                  preProc = c("center", "scale"))
+summary(objModel)
+
+print(objModel)
+plot(objModel)
+objModel$
+
+testDF <- test_image[c("expert_label","SD","NDAI","CORR","AF")]
+testDF$expert_label[testDF$expert_label == -1] <- "noncloud"
+testDF$expert_label[testDF$expert_label == 1] <- "cloud"
+testDF$expert_label <- as.factor(testDF$expert_label)
+predictions <- predict(object=objModel, testDF[,c(2:5)], type='raw')
+print(postResample(pred=predictions, obs=as.factor(testDF[,1])))
+
+# probabilites 
+library(pROC)
+predictions <- predict(object=objModel, testDF[,c(2:5)], type='prob')
+head(predictions)
+
+auc <- roc(ifelse(testDF[,1]=="cloud",1,0), predictions[[2]])
+AUC_boost <- auc$auc
+AUC_boost
+ind <- which.max(auc$sensitivities-(1-auc$specificities))
+x = auc$sensitivities[ind]
+y = auc$specificities[ind]
+
+plot(auc, main = "ROC curve of Boosting method") 
+points(x,y, col = "red", cex = 5, lwd =5)
+auc$threshold[ind]
+```
+
+
+#### 4(d) reproducing 4(a) and 4(b) using split way 2
+```{r}
+library(randomForest)
+rf <- randomForest(as.factor(expert_label) ~ NDAI + SD + CORR + AF, data = train_data_2, mtry = 2, nodesize=20)
+
+plot(rf, main = "Error plot as a function of number of trees")
+legend("top", colnames(rf$err.rate),col=1:4,cex=0.8,fill=1:4)
+
+####### variable importance and mean ginni index -----------
+var_one <- c()
+var_imp <- c()
+for (i in 1:49) {
+  portion <- seq(10,100, length.out = 49)[i]
+  train <- sample_n(train_data_2, (portion/100)*nrow(train_data_2))
+  rf = randomForest(as.factor(expert_label) ~ NDAI + SD + CORR + AF, data = train, ntree=3, mtry=2)
+  var.imp = data.frame(importance(rf, type=2))
+  var.imp$Variables = row.names(var.imp)
+  imp <- var.imp[order(var.imp$MeanDecreaseGini,decreasing = T),]
+  var_one[i] <- imp$Variables[1]
+  ## the importance of variable of first split
+  var_imp[i] <- imp$MeanDecreaseGini[1]
+} 
+
+var_one_tbl <- data.frame(index = 1:length(var_one), var_one = var_one)
+
+ggplot(data = var_one_tbl, aes(x = var_one)) + geom_bar() + ggtitle("The occurence of the 'first split' variable") + 
+  xlab('variable') + ylab('occurence ')
+
+#the variable of first split
+var_imp_tbl <- data.frame(portion = seq(10,100, length.out = 49), var_imp = var_imp)
+ggplot(data = var_imp_tbl, aes(x=portion, y = var_imp)) + geom_line() + ggtitle("MeanDecreaseGini of increasing portion of train data")
+
+rf <- randomForest(as.factor(expert_label) ~ NDAI + SD + CORR + AF , data = train_data_2, maxnode = 4, ntree = 100)
+
+oob.err=double(8)
+test.err=double(8)
+
+#mtry is no of Variables randomly chosen at each split
+for(mtry in 1:8) {
+  rf = randomForest(as.factor(expert_label) ~ NDAI + SD + CORR +  AF , data = train_data_2, mtry=mtry, maxnode = 3, ntree=100) 
+  oob.err[mtry] = rf$err.rate[,'OOB'][100] #Error of all Trees fitted 
+  
+  pred <- predict(rf, test_data_2) #Predictions on Test Set for each Tree
+  test.err[mtry]= 1-accuracy_test(pred, test_data_2$expert_label)
+#  cat(mtry," ") #printing the output to the console
+}
+test.err
+
+library(graphics)
+matplot(1:mtry , cbind(oob.err,test.err), pch=19 , col=c("red","blue"), type="b", ylab="Error rate",xlab="Number of Predictors Considered at each Split", main = "Error rate with respect to the number of predictors at each split")
+legend("topright",legend=c("Out of Bag Error","Classification Error"),pch=19, col=c("red","blue"))
+
+```
+
+```{r}
+missclassified <- test_image %>% filter(test_image$expert_label != svm_test_pred)
+ggplot(data = missclassified) + geom_point(aes(x=x, y=y)) + ggtitle("Missclassified points based on SVM")
+#similar regionn with the tree classification above
+#lower region(low x and low y ) and higher region(high x and high y)
+plot(missclassified$CORR, col = (missclassified$expert_label+2))
+missclassified$expert_label <- as.factor(missclassified$expert_label)
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = CORR, colour = expert_label)) 
+#mostly on CORR ranginng 0-0.2 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = NDAI, colour = expert_label)) 
+#scattered in ranging values of NDAI, but very little missclassification on NDAI value 0-1
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = SD, colour = expert_label)) 
+# mostly in SD values ranging from 0-20 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = DF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = CF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = BF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = AF, colour = expert_label)) 
+ggplot(data = missclassified) + geom_point(aes(x = rownames(missclassified), y = AN, colour = expert_label)) 
+missclassified[which(missclassified$expert_label == -1), ]
+```
+
